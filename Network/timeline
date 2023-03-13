@@ -1,0 +1,27 @@
+>join
+>handshake + identity
+>character creation
+>spawn
+
+need to send the state of environment to player
+need to receive the actions from player ->
+    process on server, RPC to aware client
+
+
+server has peers, a peer should have a ServerPlayer object
+on active and spawn we create a ServerPlayer?
+ServerPlayer is kept on the server side.
+Player is kept on client side?
+Player presses forwards axis, send  to Server which processes. we RPC "press forwards" to aware clients (including the actioning palyer)
+Key release follows same process.
+
+When a client receives a RPC it takes the LOCAL DB?
+
+So when a client joins and receives an update of the world state relevant to it, hold onto that data in memory.
+Game.Context contains the data.
+an object wants a RPC. it will have a UID.
+IF the client context is aware then perform the RPC.
+    IF the client is not yet aware then instantiate a copy of the object. storing in memory.
+    Call "Object:Spawn()" and fill its attributes.
+
+
