@@ -7,9 +7,22 @@ Item = require("Models/Item")
 Server = nil;
 Client = nil;
 Game = {}
+Game.Object = require "classic/classic"
+Game.Blueprints = {};
+--[[
+    load all classes and blueprints :
+]]
+local _files = love.filesystem.getDirectoryItems( 'Objects' )
+for k,v in pairs(_files) do 
+    local info = love.filesystem.getInfo('Object/'..v)
+    file_name = string.sub(v,1,string.find(v,'.lua')-1);
+    print("discovered Object [".. file_name .."] from filename [" .. v .. ']');
+    Game.Blueprints[file_name] = require("Objects." .. file_name);
+    print("Registered a Object [".. file_name .."] from filename [" .. v .. ']');
+end
 Game.isServer = false;
 Game.isClient = false;
-Game.Context = {};
+Game.Things = {};
 local db = sqlite3.open("testing.db");
 
 function uuid(this)
@@ -47,14 +60,14 @@ function love.load(args)
 
     Query.db = db;
 
-    print("\n---------\nnow select back the elements\n----------\n")
+    -- print("\n---------\nnow select back the elements\n----------\n")
 
-    print("get potatos")
-    myPotatos = Player:find(1):items():where("name","POTATO"):execute()
-    for k,potato in pairs(myPotatos) do
-        print(potato);
-        print(potato:getName())
-    end
+    -- print("get potatos")
+    -- myPotatos = Player:find(1):items():where("name","POTATO"):execute()
+    -- for k,potato in pairs(myPotatos) do
+    --     print(potato);
+    --     print(potato:getName())
+    -- end
 
     if(Game.isClient) then
         Game.Client:start()
