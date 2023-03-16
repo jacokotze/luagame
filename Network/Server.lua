@@ -62,6 +62,21 @@ function Server:HandleRPC( message , from )
 end
 
 function Server:handle( message , from )
+    --[[
+        TODO:
+        know that if something is CREATED/SPAWNED bt client, it might have RPC calls.
+        keep that object in a CREATED_THIS_FRAME buffer.
+        
+        detect a RPC on objects recently created this frame and update the UUID.
+
+        should propose a Game.GetThing()
+
+        should take a uuid - attempt to find the thing by uuid.
+        BUT first check if the uuid was renamed by a recent create/spawn. returning the swapped uuid
+        then continue to retrieve.
+
+        Game.resolveUUID() can helper as a check against swaps and return the true uuid.
+    ]]
     if( message.handshake and message.handshake == "1234") then
         print("peer successfully handshaked",from)
         print('from is peer 1?')

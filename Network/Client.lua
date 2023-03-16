@@ -87,6 +87,11 @@ function Client:NetworkUpdate(data)
 end
 
 function Client:send(message)
+    --[[
+        detect SPAWN, buffer
+        detect RPC on a SPAWN object (RPC should occur in order they are originally pushed.)
+        TODO : add buffering to messages each frame
+    ]]
     local send_result, message, num_bytes = self.socket:send(Client.JSON_START..json.encode(message)..Client.JSON_END)
     if (send_result == nil) then
         print("transmit error: "..message..'  sent '..num_bytes..' bytes');

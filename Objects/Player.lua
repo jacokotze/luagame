@@ -40,6 +40,16 @@ function Player:keypressed( key )
     if Game.isClient and self.me then
         self.keystates[key] = true;
         self:RPC('keypressed',key); -- send to server method call
+        --[[
+            spawn some object. perform some actions on it?
+            spawning objects are buffered on the client in the current frame.
+                they are given a temprary uuid until the server assigns a static one.
+                locally any RPC calls will be buffered with the creation of the object on the server side.
+                once the server assigns a uuid it will update client(s) with a "RENAME" flag.
+                    an object is unsynced until it is renamed. clients can check if uuid starts with "_" for temporary state confirmation.
+                SPAWN/CREATE is processed first. RPC following are updated with the new uuid and called in order of RPC call in the frame.
+                this will thus respect method call order in a frame. (ie. create bullet. do stuff do stuff rpc something else -> then rpc bullet)
+        ]]
     end
     if Game.isServer then
         print("server setting key state on player!",key,true)
