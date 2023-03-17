@@ -20,9 +20,10 @@ function Client:encodeMessage(message)
     return Client.JSON_START..json.encode(message)..Client.JSON_END;
 end
 
-function Client:new()
+function Client:new(player_name)
     self.buffer = '';
-    self.identity = 'identity:archangel075:password';
+    self.send_buffer = {}
+    self.identity = 'identity:'..player_name..':password';
     self.uuid = uuid(self.identity);
 end
 
@@ -67,12 +68,13 @@ function Client:NetworkUpdate(data)
             --does obj exit already in the game?
             --  again there could be a grouping system here. perhps storing objects in Things by qualified name.
             --  this will make lookups by type faster, though strict UID lookup on a global table is justifiably fast enough? maybe.
-            if(Game.Things[uuid] and Game.Things[uuid].NetworkUpdate) then
+            if(Game.findThing(uuid) and Game.findThing(uuid).NetworkUpdate) then
+                local thing = Game.findThing(uuid);
                 print("handover to object to update itself...")
-                Game.Things[uuid]:NetworkUpdate(object_data);
+                thing:NetworkUpdate(object_data);
             else
                 print("spawn a new object... [" .. object_data._class .. "]",Game.Blueprints[object_data._class]);
-                new_obj = Game.Blueprints[object_data._class](nil)
+                local new_obj = Game.Blueprints[object_data._class](nil)
                 new_obj.uuid = uuid;
                 print('new_object :',new_obj)
                 assert(new_obj.is and new_obj:is(Game.Blueprints[object_data._class]), ' object failed to spawn ');
@@ -86,18 +88,32 @@ function Client:NetworkUpdate(data)
     end
 end
 
+function Client:dispatchBuffer()
+    if #self.send_buffer == 0 then return end
+    local message = {
+        event="BUFFERED";
+        payload=self.send_buffer
+    }
+    local message = Client.JSON_START..json.encode(message)..Client.JSON_END
+    self.send_buffer = {}
+
+    local send_result, message, num_bytes = self.socket:send(message)
+    if (send_result == nil) then
+        print("transmit error: "..message..'  sent '..num_bytes..' bytes');
+        if (message == 'closed') then  error("failed to send to closed connection") end
+        return false;
+    end
+    
+    return true
+end
+
 function Client:send(message)
     --[[
         detect SPAWN, buffer
         detect RPC on a SPAWN object (RPC should occur in order they are originally pushed.)
         TODO : add buffering to messages each frame
     ]]
-    local send_result, message, num_bytes = self.socket:send(Client.JSON_START..json.encode(message)..Client.JSON_END)
-    if (send_result == nil) then
-        print("transmit error: "..message..'  sent '..num_bytes..' bytes');
-        if (message == 'closed') then  error("failed to send to closed connection") end
-        return false;
-    end
+    table.insert(self.send_buffer,message);
     return true
 end
 
@@ -110,6 +126,7 @@ function Client:keypressed(key, scancode)
 end
 
 function Client:keyreleased(key, scancode)
+    self.Player:keyreleased(key);
     -- self:send({
     --     event="kr",
     --     key=key
@@ -160,25 +177,20 @@ function Client:start()
     return true;
 end
 
-function Client:update()
-    self:receive();
-    -- self:dispatch()
-    -- self:inlet() 
-    payload = {}
-    data_to_send = false;
-    -- for uuid,obj in pairs(Game.Things) do
-    --     if obj.dirty then
-    --         if obj.NetworkUpdateClient then
-    --             data_to_send = true;
-                 
-    --             obj_payload = obj:NetworkUpdateClient()
-    --             obj_payload._class = obj._class;
-    --             payload[obj.uuid] = obj_payload;
-    --         end
-    --     end
-    -- end
-    -- if data_to_send then self:send()
+function Client:draw()
+    for uuid,obj in pairs(Game.Things) do
+        if obj.draw then obj:draw() end
+    end
+end
 
+function Client:update(dt)
+    self:receive();
+    --dispatch queued sends. preserving RPC calls in the payload
+    self:dispatchBuffer();
+
+    for uuid,obj in pairs(Game.Things) do
+        if obj.update then obj:update(dt) end
+    end
 end
 
 

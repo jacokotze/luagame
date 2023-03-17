@@ -46,10 +46,11 @@ function Server:HandleRPC( message , from )
         --does obj exist already in the game?
         --  again there could be a grouping system here. perhps storing objects in Things by qualified name.
         --  this will make lookups by type faster, though strict UID lookup on a global table is justifiably fast enough? maybe.
-        if( Game.Things[message.uuid] ) then
-            if( Game.Things[message.uuid][message.method] ) then
+        if( Game.findThing(message.uuid) ) then
+            local thing = Game.findThing(message.uuid);
+            if( thing[message.method] ) then
                 print("RPC on object [" .. message._class .. "]:" .. message.method .. "()");
-                Game.Things[message.uuid][message.method](Game.Things[message.uuid],unpack(message.args));
+                thing[message.method](thing,unpack(message.args));
             else
                 print("no such method [" .. message._class .. "]:" .. message.method .. "()");
             end
@@ -59,6 +60,10 @@ function Server:HandleRPC( message , from )
     else
         print("no such object type [" .. message._class .. "]");
     end
+end
+
+function Server:newUuid(prefix)
+    return uuid((prefix or '')..tostring(os.clock()))
 end
 
 function Server:handle( message , from )
@@ -101,6 +106,30 @@ function Server:handle( message , from )
         return;
     end
 
+    if( message.event == "CREATE" ) then
+        --Create the object. swap the UUID and issue a "SWAP" immediately to the client.
+        if(message._class and Game.Blueprints[message._class]) then
+            local new_uuid = self:newUuid();
+            Game.addSwap(message.uuid,obj.uuid); -- from here on any reference to incoming uuid is redirected to new uuid;
+
+            Game.Things[new_uuid] = Game.Blueprints[message._class]();
+            obj.uuid = new_uuid; 
+
+            if Game.Things[new_uuid].NetworkSpawn then Game.Things[new_uuid]:NetworkSpawn() end
+            local create_message = {
+                event = "CREATED",
+                from = message.uuid,
+                uuid = new_uuid
+            }
+            self:broadcast(create_message);
+        end
+    end
+
+    if( message.event == "BUFFERED" ) then
+        for k,queued_message in pairs(message.payload) do self:handle(queued_message,from) end
+        return;
+    end
+
     --check for client doing some activity?
     
     print("unknown message")
@@ -124,7 +153,7 @@ function Server:seedPlayerContext(peer)
     for uuid,peer in pairs(self.peers.active) do
         --again, in future the Object should handle the encoding and message that is send here
         --for now we will simply send the existance of the object?
-        local obj = Game.Things[uuid];
+        local obj = Game.findThing(uuid);
         local player = {
             _class = obj._class or error("Object must declare class")
         }
@@ -233,7 +262,7 @@ function Server:broadcast(payload, excluded)
     end
 end
 
-function Server:update()
+function Server:update(dt)
     self:accept() 
     -- print("receive from unknowns:")
     self:receive(self.peers.unknown)
@@ -242,6 +271,10 @@ function Server:update()
     self:receive(self.peers.active)
     -- print("-------------------------------------")
     -- self:dispatch()
+    for uuid,obj in pairs(Game.Things) do
+        if obj.update then obj:update(dt) end
+    end
+
     message = {
         event = "NetworkUpdate",
         data = {};

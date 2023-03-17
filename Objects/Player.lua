@@ -7,6 +7,39 @@ function Player:new(peer)
     self.peer = peer or false;
     self.keystates = {}
     self.dirty = false;
+    self.position = {0,0}
+    self.color = {math.random(1,255)/255,math.random(1,255)/255,math.random(1,255)/255};
+end
+
+
+function Player:isPressed(key)
+    return self.keystates[key] or false;
+end
+
+function Player:draw()
+    love.graphics.setColor(self.color[1],self.color[2],self.color[3])
+    love.graphics.circle('fill',self.position[1],self.position[2],32);
+    love.graphics.setColor(1,1,1)
+end
+
+function Player:update(dt)
+    local delta_x = 0;
+    local delta_y = 0;
+    if self:isPressed('s') then
+        delta_y = delta_y + 1;
+    end
+    if self:isPressed('w') then
+        delta_y = delta_y - 1;
+    end
+    if self:isPressed('d') then
+        delta_x = delta_x + 1;
+    end
+    if self:isPressed('a') then
+        delta_x = delta_x - 1;
+    end
+
+    if(delta_x ~= 0) then self.position[1] = self.position[1] + delta_x*50*dt end
+    if(delta_y ~= 0) then self.position[2] = self.position[2] + delta_y*50*dt end
 end
 
 function Player:NetworkSpawn(data)
@@ -25,9 +58,8 @@ function Player:NetworkUpdate(data)
     --server does not get a network update
     if(Game.isClient) then
         print("updating self...")
-        self.keystates = data;
-    else
-        return false
+        self.keystates = data.keystates;
+        self.position = data.position;
     end
 end
 
@@ -58,16 +90,23 @@ function Player:keypressed( key )
     end
 end
 
+function Player:keyreleased( key )
+    if Game.isClient and self.me then
+        self.keystates[key] = false;
+        self:RPC('keyreleased',key); -- send to server method call
+    end
+    if Game.isServer then
+        print("server setting key state on player!",key,true)
+        self.keystates[key] = false;
+        self:makeDirty();
+    end
+end
+
 function Player:Serialize()
     data = {}
     data.keystates = self.keystates
-    
+    data.position = self.position
     return data;
-end
-
-function Player:keyreleased( message )
-
-
 end
 
 function Player:RPC(method,...)

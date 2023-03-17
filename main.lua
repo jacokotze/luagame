@@ -23,6 +23,7 @@ end
 Game.isServer = false;
 Game.isClient = false;
 Game.Things = {};
+Game.SwapLookup = {}
 local db = sqlite3.open("testing.db");
 
 function uuid(this)
@@ -44,13 +45,52 @@ function prettyPrint(result)
     end
 end
 
+function Game.renameThing(uuidA,uuidB)
+    --reinsert the object with a new uuid, removing reference to the previous uuid
+    assert(not Game.SwapLookup[uuidA],'unable to rename thing. Swap already exists;');
+    local thing = Game.Things[uuidA];
+    Game.Things[uuidA] = nil;
+    Game.Things[uuidB] = thing;
+    Game.Things[uuidB].uuid = uuidB;
+    Game.SwapLookup[uuidA] = uuidB;
+end
+
+function Game.addSwap(uuidA,uuidB)
+    assert(not Game.SwapLookup[uuidA],'unable to rename thing. Swap already exists;');
+    Game.SwapLookup[uuidA] = uuidB;
+end
+
+function Game.isSwapped(uuid)
+    return Game.SwapLookup[uuid] or false;
+end
+
+function Game.resolveUUID(uuidA)
+    if(Game.isServer) then return Game.SwapLookup[uuidA] or uuidA
+    else return uuidA end
+end
+
+function Game.findServerThing(uuidA)
+    return Game.Things[Game.resolveUUID(uuidA)];     
+end
+
+function Game.findThing(uuid)
+    if Game.isServer then
+        return Game.findServerThing(uuid)
+    else
+        return Game.Things[uuid];
+    end
+end
+
 function love.load(args)
     local htype = args[1] or 'client'
     if(htype == "client") then
+        local player_name = args[2] or 'archangel075';
+        
         Client = require("Network.Client")
-
+        
         Game.isClient = true;
-        Game.Client = Client();
+        Game.Client = Client(player_name);
+
     else
         Server = require("Network.Server")
 
@@ -78,8 +118,9 @@ function love.load(args)
 end
     
 function love.draw()
-
-
+    if(Game.isClient) then
+        Game.Client:draw()
+    end
 end
 
 function love.keypressed(key, scancode)
@@ -102,9 +143,9 @@ end
 
 function love.update(dt)
     if(Game.isClient) then
-        Game.Client:update()
+        Game.Client:update(dt)
     end
     if(Game.isServer) then
-        Game.Server:update()
+        Game.Server:update(dt)
     end
 end
