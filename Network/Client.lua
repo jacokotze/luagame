@@ -168,8 +168,9 @@ function Client:receive()
     end
 end
 
-function Client:start()
-    self.socket,err = socket.connect('127.0.0.1',1337)
+function Client:start(as)
+    print("connecting to",as or '127.0.0.1',1337)
+    self.socket,err = socket.connect(as or '127.0.0.1',1337)
     if(err) then error(err) end
     self.socket:settimeout(0)
     r = self:send({handshake="1234",identity=self.uuid})

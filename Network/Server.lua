@@ -19,7 +19,7 @@ function Server:encodeMessage(message)
     return Server.JSON_START..json.encode(message)..Server.JSON_END;
 end
 
-function Server:start()
+function Server:start(as)
     self.Game = Game; --quick ref.
     self.peers = {
         unknown = {},
@@ -29,7 +29,7 @@ function Server:start()
 
     self.buffer = "";
 
-    self.socket, err = socket.bind('*',1337)
+    self.socket, err = socket.bind(as or '*',1337)
     if(err) then error(err) end
     if(not self.socket) then error("failed to make server socket?") end
     --place holder for now. just return true to indicate server has "Started"

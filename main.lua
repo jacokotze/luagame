@@ -83,8 +83,9 @@ end
 
 function love.load(args)
     local htype = args[1] or 'client'
+    local socket_target = args[2] or '127.0.0.1'
     if(htype == "client") then
-        local player_name = args[2] or 'archangel075';
+        local player_name = args[3] or 'archangel075';
         
         Client = require("Network.Client")
         
@@ -110,10 +111,10 @@ function love.load(args)
     -- end
 
     if(Game.isClient) then
-        Game.Client:start()
+        Game.Client:start(socket_target)
     end
     if(Game.isServer) then
-        Game.Server:start()
+        Game.Server:start(socket_target)
     end
 end
     
