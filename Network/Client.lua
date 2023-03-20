@@ -118,19 +118,15 @@ function Client:send(message)
 end
 
 function Client:keypressed(key, scancode)
-    self.Player:keypressed(key);
-    -- self:send({
-    --     event="kp",
-    --     key=key
-    -- })
+    if(self.Player) then
+        self.Player:keypressed(key);
+    end
 end
 
 function Client:keyreleased(key, scancode)
-    self.Player:keyreleased(key);
-    -- self:send({
-    --     event="kr",
-    --     key=key
-    -- })
+    if(self.Player) then
+        self.Player:keyreleased(key);
+    end
 end
 
 function Client:mousemoved(x,y,dx,dy)
