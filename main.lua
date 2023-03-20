@@ -1,9 +1,9 @@
 local md5 = require('Lib.md5.md5')
-require("sqlite3");
-Query = require("builder")
-Test = require("Models/Test")
-Player = require("Models/Player")
-Item = require("Models/Item")
+-- require("sqlite3");
+-- Query = require("builder")
+-- Test = require("Models/Test")
+-- Player = require("Models/Player")
+-- Item = require("Models/Item")
 Server = nil;
 Client = nil;
 Game = {}
@@ -25,7 +25,7 @@ Game.isServer = false;
 Game.isClient = false;
 Game.Things = {};
 Game.SwapLookup = {}
-local db = sqlite3.open("testing.db");
+-- local db = sqlite3.open("testing.db");
 
 function uuid(this)
     str = md5.sumhexa(this);
