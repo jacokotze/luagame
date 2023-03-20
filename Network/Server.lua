@@ -26,6 +26,7 @@ function Server:start(as)
         inactive = {},
         active = {},
     }
+    self.world_size = {x=5,y=5};
 
     self.buffer = "";
 
@@ -33,6 +34,13 @@ function Server:start(as)
     if(err) then error(err) end
     if(not self.socket) then error("failed to make server socket?") end
     --place holder for now. just return true to indicate server has "Started"
+    --make a bunnch of voxels for the world :
+    for y = 1, self.world_size.y, 1 do
+        for x = 1, self.world_size.x, 1 do
+            -- local vox_obj = Game.Blueprints.Voxel(x*2,y*2);
+            -- Game.Things[vox_obj.uuid] = vox_obj;
+        end
+    end
     print("server bound")
     return true;
 end
@@ -64,6 +72,12 @@ end
 
 function Server:newUuid(prefix)
     return uuid((prefix or '')..tostring(os.clock()))
+end
+
+function Server:draw()
+    for uuid,obj in pairs(Game.Things) do
+        if obj.draw then obj:draw() end
+    end
 end
 
 function Server:handle( message , from )
@@ -141,7 +155,7 @@ end
 
 function Server:seedPlayerContext(peer)
     print("seeding to spawning player")
-    message = {
+    local message = {
         event = "NetworkUpdate",
         data = {};
     }
@@ -150,23 +164,25 @@ function Server:seedPlayerContext(peer)
         Only relevant objects are seeded. this is to cut down on uneeded transmissions.
     ]]
     --seed players, items etc important to the players current location?
-    for uuid,peer in pairs(self.peers.active) do
-        --again, in future the Object should handle the encoding and message that is send here
-        --for now we will simply send the existance of the object?
-        local obj = Game.findThing(uuid);
-        local player = {
-            _class = obj._class or error("Object must declare class")
-        }
-        message.data[obj.uuid]=player;
-        --[[
-            disabled the beneath as preferably would want the player to keep its ClientPlayer
-            inside the same scope as other objects.
-            Simply the reference TO the ClientPlayer is copied. 
-        ]]
-        -- if obj ~= peer then table.insert(message.data.Players,player) end
-    end
-    message = self:encodeMessage(message);
-    peer.socket:send(message);
+    -- for uuid,peer in pairs(self.peers.active) do
+    --     --again, in future the Object should handle the encoding and message that is send here
+    --     --for now we will simply send the existance of the object?
+    --     local obj = Game.findThing(uuid);
+    --     local player = {
+    --         _class = obj._class or error("Object must declare class")
+    --     }
+    --     message.data[obj.uuid]=player;
+    --     --[[
+    --         disabled the beneath as preferably would want the player to keep its ClientPlayer
+    --         inside the same scope as other objects.
+    --         Simply the reference TO the ClientPlayer is copied. 
+    --     ]]
+    --     -- if obj ~= peer then table.insert(message.data.Players,player) end
+    -- end
+    -- message = self:encodeMessage(message);
+    -- peer.socket:send(message);
+
+    for uuid,thing in pairs(Game.Things) do thing:makeDirty() end
 end
 
 function Server:getSocketsFrom(from)
@@ -285,6 +301,7 @@ function Server:update(dt)
             if obj.Serialize then
                 data_to_send = true;
                 obj_payload = obj:Serialize()
+                
                 obj_payload._class = obj._class;
                 message.data[obj.uuid] = obj_payload;
             end

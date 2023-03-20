@@ -6,6 +6,9 @@
 	path = classic
 	url = https://github.com/rxi/classic.git
 
-[submodule "g3d"]
-	path = g3d
-	url = https://github.com/groverburger/g3d.git
+[submodule "Lib/g3d"]
+	path = Lib/g3d
+	url = https://github.com/jacokotze/g3d.git
+[submodule "Lib/cpml"]
+	path = Lib/cpml
+	url = https://github.com/excessive/cpml.git

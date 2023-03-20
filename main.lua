@@ -7,6 +7,7 @@ Item = require("Models/Item")
 Server = nil;
 Client = nil;
 Game = {}
+Game.g3d = require "Lib/g3d/g3d"
 Game.Object = require "classic/classic"
 Game.Blueprints = {};
 --[[
@@ -122,6 +123,9 @@ function love.draw()
     if(Game.isClient) then
         Game.Client:draw()
     end
+    if(Game.isServer) then
+        Game.Server:draw()
+    end
 end
 
 function love.keypressed(key, scancode)
@@ -140,6 +144,16 @@ function love.keyreleased(key, scancode)
     if(Game.isServer and Game.Server.keyreleased) then
         Game.Server:keyreleased(key,scancode)
     end
+end
+
+function love.mousemoved(x,y, dx,dy)
+    if(Game.isClient and Game.Client.mousemoved) then
+        Game.Client:mousemoved(x,y,dx,dy)
+    end
+    if(Game.isServer and Game.Server.mousemoved) then
+        Game.Server:mousemoved(x,y,dx,dy)
+    end
+    
 end
 
 function love.update(dt)

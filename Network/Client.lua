@@ -133,6 +133,12 @@ function Client:keyreleased(key, scancode)
     -- })
 end
 
+function Client:mousemoved(x,y,dx,dy)
+    if(self.Player) then
+        self.Player:mousemoved(x,y,dx,dy);
+    end
+end
+
 function Client:receive()
     local input,output = socket.select({ self.socket },nil, 0)
     for k,v in ipairs(input) do
@@ -188,6 +194,8 @@ function Client:update(dt)
     self:receive();
     --dispatch queued sends. preserving RPC calls in the payload
     self:dispatchBuffer();
+
+    if love.keyboard.isDown("escape") then love.event.push("quit") end
 
     for uuid,obj in pairs(Game.Things) do
         if obj.update then obj:update(dt) end
