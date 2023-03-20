@@ -37,8 +37,8 @@ function Server:start(as)
     --make a bunnch of voxels for the world :
     for y = 1, self.world_size.y, 1 do
         for x = 1, self.world_size.x, 1 do
-            -- local vox_obj = Game.Blueprints.Voxel(x*2,y*2);
-            -- Game.Things[vox_obj.uuid] = vox_obj;
+            local vox_obj = Game.Blueprints.Voxel(x*2,y*2);
+            Game.Things[vox_obj.uuid] = vox_obj;
         end
     end
     print("server bound")

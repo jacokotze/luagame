@@ -12,6 +12,11 @@ function Player:new(peer)
     self.pitch = 0;
     -- self.threedee = Game.Blueprints.ThreeDee();
     if Game.isClient or Game.isServer then
+        self.pitch = 0;
+        self.direction = 0;
+        self._pitchAccumulator = 0;
+        self._directionAccumulator = 0;
+
         self.camA = Game.g3d.camera.current();
         self.camB = Game.g3d.camera.newCamera();
         self.camB.position = {0,0,0}
@@ -40,7 +45,7 @@ function Player:update(dt)
     local ty = self.model.translation[2]
     local tz = self.model.translation[3]
 
-    local rx,ry,rz,rw = self.model:getRotation():unpack()
+    -- local rx,ry,rz,rw = self.model:getRotation():unpack()
 
     local rx = self.model.rotation[1]
     local ry = self.model.rotation[2]
@@ -57,24 +62,30 @@ function Player:update(dt)
         self.model:setTranslation( tx-fx , ty-fy, tz-fz );
     end
 
-    if(self:isPressed('q')) then
-        self.model:setRotation(rx,ry,rz-dt,rw)
-    end
-    if(self:isPressed('e')) then
-        self.model:setRotation(rx,ry,rz+dt,rw)
-    end
-
-    print("self rotation,",self.model.rotation[4])
+    -- if(self:isPressed('q')) then
+    --     self.model:setRotation(rx,ry,rz-dt,rw)
+    -- end
+    -- if(self:isPressed('e')) then
+    --     self.model:setRotation(rx,ry,rz+dt,rw)
+    -- end
 
     if(Game.isClient and self.me) then
         local hx = 0
-        local hy = -0.137329
-        local hz = 0.676312
-        
-        self.camB:lookAt(
-            self.model.translation[1]+hx,self.model.translation[2]+hy,self.model.translation[3]+hz,
-            self.model.translation[1]+hx+fx,self.model.translation[2]+hy+fy,self.model.translation[3]+hz+fz
+        local hy = 0
+        local hz = 0.52
+
+        self.camB:lookInDirection(
+            self.model.translation[1]+hx,
+            self.model.translation[2]+hy,
+            self.model.translation[3]+hz, 
+            rz,
+            self.pitch+rx
         )
+        
+        -- self.camB:lookAt(
+        --     self.model.translation[1]+hx,self.model.translation[2]+hy,self.model.translation[3]+hz,
+        --     self.model.translation[1]+hx+fx,self.model.translation[2]+hy+fy,self.model.translation[3]+hz+fz
+        -- )
     end
 end
 
@@ -99,6 +110,8 @@ function Player:NetworkUpdate(data)
         -- self.model:setTransform(data.translation,data.rotation, self.model.scale);
         self.model:setTranslation(data.translation[1],data.translation[2],data.translation[3])
         self.model:setRotation(data.rotation[1],data.rotation[2],data.rotation[3],data.rotation[4])
+        self.direction = data.direction;
+        self.pitch = data.pitch;
     end
 end
 
@@ -108,14 +121,38 @@ function Player:makeDirty()
 end
 
 function Player:mousemoved(x,y,dx,dy)
+    local sensitivity = 1/300
+    self.direction = self.direction - dx*sensitivity
+    self.pitch = math.max(math.min(self.pitch - dy*sensitivity, math.pi*0.5), math.pi*-0.5)
+
+    local rx = self.model.rotation[1]
+    local ry = self.model.rotation[2]
+    local rz = self.model.rotation[3]
+    local rw = nil
+    self.model:setRotation(rx,ry,self.direction,rw)
+
+
     if Game.isClient and self.me then
-        -- Game.g3d.camera.current():firstPersonLook(dx,dy)
-        -- self.threedee:firstPersonLook(dx,dy)
-        -- self:RPC('mousemoved',x,y,dx,dy);
+        self:RPC('mousemoved',x,y,dx,dy);
     end
     if(Game.isServer) then
-        -- self.threedee:firstPersonLook(dx,dy)
-        -- self:makeDirty();
+        --track accumulated pitch and direction.
+        --when reaching a threshold, push back the accumulator and mark as dirty.
+        --should thus cause an mark dirty based on the significance of mouse movement?
+        self._pitchAccumulator = math.abs(dy)+self._pitchAccumulator
+        self._directionAccumulator = math.abs(dx)+self._directionAccumulator
+        local significant = false;
+        if(self._pitchAccumulator > 10) then
+            self._pitchAccumulator = self._pitchAccumulator-10;
+            significant = true;
+        end
+        if(self._directionAccumulator > 20) then
+            self._directionAccumulator = self._directionAccumulator-20;
+            significant = true;
+        end
+        if(significant) then
+            self:makeDirty()
+        end
     end
 end
 
@@ -126,6 +163,12 @@ function Player:keypressed( key )
         if(key == 't') then
             if self.camera == 'camA' then self.camera = 'camB' else self.camera = 'camA' end
             Game.g3d.camera.setCurrent(self[self.camera]);
+        end
+
+        if(key == 'lgui') then
+            self.captureMouse = self.captureMouse or false;
+            self.captureMouse = not self.captureMouse
+            love.mouse.setRelativeMode(self.captureMouse)
         end
 
         self:RPC('keypressed',key); -- send to server method call
@@ -166,14 +209,14 @@ function Player:Serialize()
     -- data.rotation = {self.model:getRotation():unpack()};
     data.rotation = self.model.rotation;
     -- data.position = self.threedee.position
-    -- data.dir = self.threedee.direction
-    -- data.pitch = self.threedee.pitch
+    data.direction = self.direction
+    data.pitch = self.pitch
     return data;
 end
 
 function Player:RPC(method,...)
     assert(Game.isClient, 'Only Clients can perform a RPC');
-    message = {}
+    local message = {}
     message['event']    = "RPC";
     message['uuid']     = self.uuid;
     message['_class']   = self._class;
