@@ -12,3 +12,9 @@
 [submodule "Lib/cpml"]
 	path = Lib/cpml
 	url = https://github.com/excessive/cpml.git
+[submodule "Lib/MessagePack"]
+	path = Lib/MessagePack
+	url = https://github.com/kieselsteini/msgpack
+[submodule "Lib/bitser"]
+	path = Lib/bitser
+	url = https://github.com/gvx/bitser.git

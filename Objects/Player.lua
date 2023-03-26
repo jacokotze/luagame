@@ -121,6 +121,7 @@ function Player:makeDirty()
 end
 
 function Player:mousemoved(x,y,dx,dy)
+    if type(x) == "table" then x,y,dx,dy = unpack(x) end
     local sensitivity = 1/300
     self.direction = self.direction - dx*sensitivity
     self.pitch = math.max(math.min(self.pitch - dy*sensitivity, math.pi*0.5), math.pi*-0.5)
@@ -133,7 +134,7 @@ function Player:mousemoved(x,y,dx,dy)
 
 
     if Game.isClient and self.me then
-        self:RPC('mousemoved',x,y,dx,dy);
+        self:RPC('mousemoved',{x,y,dx,dy});
     end
     if(Game.isServer) then
         --track accumulated pitch and direction.
@@ -142,12 +143,13 @@ function Player:mousemoved(x,y,dx,dy)
         self._pitchAccumulator = math.abs(dy)+self._pitchAccumulator
         self._directionAccumulator = math.abs(dx)+self._directionAccumulator
         local significant = false;
-        if(self._pitchAccumulator > 10) then
-            self._pitchAccumulator = self._pitchAccumulator-10;
+        local limit = 90;
+        if(self._pitchAccumulator > limit*2) then
+            self._pitchAccumulator = self._pitchAccumulator-(limit*2);
             significant = true;
         end
-        if(self._directionAccumulator > 20) then
-            self._directionAccumulator = self._directionAccumulator-20;
+        if(self._directionAccumulator > limit) then
+            self._directionAccumulator = self._directionAccumulator-limit;
             significant = true;
         end
         if(significant) then

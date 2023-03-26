@@ -15,10 +15,6 @@ local Server = Object:extend()
 Server.JSON_START = "__{START}__"
 Server.JSON_END = "__{END}__"
 
-function Server:encodeMessage(message)
-    return Server.JSON_START..json.encode(message)..Server.JSON_END;
-end
-
 function Server:start(as)
     self.Game = Game; --quick ref.
     self.peers = {
@@ -98,7 +94,6 @@ function Server:handle( message , from )
     ]]
     if( message.handshake and message.handshake == "1234") then
         print("peer successfully handshaked",from)
-        print('from is peer 1?')
         index = false
         for k,v in pairs(self.peers.unknown) do
             if(v.socket == from.socket) then index = k end
@@ -109,7 +104,7 @@ function Server:handle( message , from )
         new_player = Game.Blueprints.Player(peer);
         new_player.uuid = peer.uuid;
         Game.Things[peer.uuid] = new_player;
-        print("peer moved to active list")
+        print("peer moved to active list, seeding...")
         peer.Player = new_player;
         self:seedPlayerContext(peer);
         return;
@@ -202,12 +197,12 @@ function Server:receive(from)
     -- print("receiving...")
     local input,output = socket.select(self:getSocketsFrom(from),nil, 0)
     for k,v in ipairs(input) do
-        peer = self:socketToPeer(v,from);
+        local peer = self:socketToPeer(v,from);
         if peer then 
             local _buffer_not_empty = false;
             while true do
                 print("receive next chunk")
-                v:settimeout(0.05);
+                v:settimeout(0.01);
                 local data, err, partial = v:receive()
                 print("data,err,partial",data,err,partial);
                 if (data) then  self.buffer = self.buffer .. data;  _buffer_not_empty=true;  end
@@ -225,8 +220,15 @@ function Server:receive(from)
                     print('start and finish')
                     local message = string.sub(self.buffer, start+11, finish-1)
                     self.buffer = string.sub(self.buffer, 1, start-1)  ..   string.sub(self.buffer, finish + 9 ) -- cutting our message from buffer
-                    local data = json.decode(message)
-                    self:handle(  data, peer  )
+                    -- local data = json.decode(message)
+                    print("Recieved the message\n "..message.."\n\n Buffer remaining :\n "..self.buffer.."\n\n")
+                    
+                    local r,data = pcall(Game.bitser.loads,message);
+                    if r then
+                        pcall(self.handle,self,data,peer) --self:handle(  data, peer  )
+                    else
+                        print("BAD MESSAGE")
+                    end
                 else
                     print("no more messages in buffer")
                     break
@@ -263,7 +265,8 @@ function Server:accept()
 end
 
 function Server:send(message, socket)
-    local send_result, message, num_bytes = socket:send(Server.JSON_START..json.encode(message)..Server.JSON_END)
+    -- local send_result, message, num_bytes = socket:send(Server.JSON_START..json.encode(message)..Server.JSON_END)
+    local send_result, message, num_bytes = socket:send(Server.JSON_START..Game.bitser.dumps(message)..Server.JSON_END)
     if (send_result == nil) then
         print("transmit error: "..message..'  sent '..num_bytes..' bytes');
         if (message == 'closed') then  error("failed to send to closed connection") end
@@ -301,7 +304,6 @@ function Server:update(dt)
             if obj.Serialize then
                 data_to_send = true;
                 obj_payload = obj:Serialize()
-                
                 obj_payload._class = obj._class;
                 message.data[obj.uuid] = obj_payload;
             end

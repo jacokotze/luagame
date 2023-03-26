@@ -16,10 +16,6 @@ local Client = Object:extend()
 Client.JSON_START = "__{START}__"
 Client.JSON_END = "__{END}__"
 
-function Client:encodeMessage(message)
-    return Client.JSON_START..json.encode(message)..Client.JSON_END;
-end
-
 function Client:new(player_name)
     self.buffer = '';
     self.send_buffer = {}
@@ -42,10 +38,12 @@ function Client:handle( message )
             self:NetworkUpdate(message.data);
         end
     end
+    print("got message",message)
 end
 
 function Client:NetworkUpdate(data)
     print("NETWORK UPDATE PROCESSING.........")
+    for k,v in pairs(data) do print(k,v) end
     --seed players
     -- Game.Context.Players = Game.Context.Players;
     --[[
@@ -83,7 +81,7 @@ function Client:NetworkUpdate(data)
                 if(new_obj.OnNetworkSpawn) then new_obj:OnNetworkObjectSpawn() end
             end
         else
-            error("Object network updating did not declare a class or class unknown [" .. tostring(object_data._class) .. "]")
+            error("Object network updating did not declare a class or class unknown [" .. tostring(object_data._class) .. "] @@ " .. json.encode(object_data))
         end
     end
 end
@@ -94,7 +92,8 @@ function Client:dispatchBuffer()
         event="BUFFERED";
         payload=self.send_buffer
     }
-    local message = Client.JSON_START..json.encode(message)..Client.JSON_END
+    -- local message = Client.JSON_START..json.encode(message)..Client.JSON_END
+    local message = Client.JSON_START..Game.bitser.dumps(message)..Client.JSON_END
     self.send_buffer = {}
 
     local send_result, message, num_bytes = self.socket:send(message)
@@ -160,8 +159,13 @@ function Client:receive()
                 print(message)
                 print("====")
 
-                local data = json.decode(message)
-                self:handle(  data  )
+                -- local data = json.decode(message)
+                local r,data = pcall(Game.bitser.loads,message);
+                if r then
+                    pcall(self.handle,self, data );
+                else
+                    print("BAD MESSAGE")
+                end
             else
                 break
             end

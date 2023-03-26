@@ -9,6 +9,7 @@ Client = nil;
 Game = {}
 Game.g3d = require "Lib/g3d/g3d"
 Game.Object = require "classic/classic"
+Game.bitser = require("Lib.bitser.bitser")
 Game.Blueprints = {};
 --[[
     load all classes and blueprints :
@@ -20,11 +21,13 @@ for k,v in pairs(_files) do
     print("discovered Object [".. file_name .."] from filename [" .. v .. ']');
     Game.Blueprints[file_name] = require("Objects." .. file_name);
     print("Registered a Object [".. file_name .."] from filename [" .. v .. ']');
+    -- Game.bitser.registerClass(file_name,Game.Blueprints[file_name])
 end
 Game.isServer = false;
 Game.isClient = false;
 Game.Things = {};
 Game.SwapLookup = {}
+
 -- local db = sqlite3.open("testing.db");
 
 function uuid(this)
@@ -164,3 +167,4 @@ function love.update(dt)
         Game.Server:update(dt)
     end
 end
+print = function(...) end
